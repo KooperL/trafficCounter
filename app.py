@@ -7,13 +7,25 @@ import torch
 import tracker_traj
 import datetime
 import json
+from sort2 import *
+
+'''
+To do: 
+- Plot count with time
+- Max ppl at one time
+- Average velocity
+- Num of objects at different times
+# cant be near intersection or area of prolonged stoppage
+'''
 
 PATH = '/media/kooper/HDD/yolov5-master'
-#sys.path.append(PATH)
-#import custom
+# PATH = '/path/to/yolov5-master'
 
-
-from sort2 import *
+SOURCE = {
+    'source': False,    # bool
+    'live': False,      # bool
+    'video': 'input/filename.mp4',
+}
 
 class entity:
     def __init__(self, name: str, yolo_id: int, colour: tuple = (0,0,0)):
@@ -39,9 +51,7 @@ class entity:
             p_cx = int((p[0] + p[2])/2)
             p_cy = int((p[1] + p[3])/2)
             if p_id in self.history:
-                self.history[p_id].append([p_cx, p_cy, datetime.datetime.now()]) ## SPEED, DIRECTION, 
-                # if len(self.history[p_id]) > 10:
-                #     self.history[p_id].pop()
+                self.history[p_id].append([p_cx, p_cy, datetime.datetime.now()]) ## SPEED, DIRECTION
             else:
                 self.history[p_id] = [[p_cx, p_cy, datetime.datetime.now()]]
         return ret
@@ -75,7 +85,7 @@ ents = [entity('person', 0, (255,0,0)),
 
 # Trucks, bus, bikes, ppl, cars
 
-WIDTH, HEIGHT = 864, 486 # 32 int step   486 vs 480???
+WIDTH, HEIGHT = 864, 486
 TOP, LEFT = 500, 500
 
 scale = 1
@@ -95,18 +105,9 @@ class MSSSource:
     def release(self):
         pass
 
-'''
-To do: 
-- Plot count with time
-- Max ppl at one time
-- Average velocity
-- Num of objects at different times
-# cant be near intersection or area of prolonged stoppage
-'''
-
 
 if __name__ == '__main__':
-    model_output = torch.hub.load(PATH, 'custom', path=f'{PATH}/yolov5s.pt', source='local', force_reload=True)
+    model_output = torch.hub.load(PATH, 'customWrapper', path=f'{PATH}/yolov5s.pt', source='local', force_reload=True)
     # fourcc = cv2.VideoWriter_fourcc(*'XVID')
     # out = cv2.VideoWriter('output.avi', fourcc, 20.0, (640,480))
     
@@ -117,7 +118,7 @@ if __name__ == '__main__':
 
     source = MSSSource()
     live = cv2.VideoCapture(0)
-    video = cv2.VideoCapture('test2.mp4')
+    video = cv2.VideoCapture(SOURCE['video'])
 
     # frame_width = int(video.get(3))
     # frame_height = int(video.get(4))
@@ -129,18 +130,21 @@ if __name__ == '__main__':
     )
     fps = int(video.get(cv2.CAP_PROP_FPS))
 
-    # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
     out = cv2.VideoWriter()
-    output_file_name = "output_single.mp4"
+    output_file_name = f"output/output_{datetime.datetime.now()}.mp4"
     out.open(output_file_name, fourcc, fps, (width, height), True)
 
 
 
     while (True):
-        # ret, img = source.frame()
-        # ret, img = live.read()
-        ret, img = video.read()
+        if SOURCE['source']:
+            ret, img = source.frame()
+        elif SOURCE['LIVE']:
+            ret, img = live.read()
+        else:
+            ret, img = video.read()
+        
         if not ret:
             break
         img = cv2.resize(img, (WIDTH, HEIGHT))
@@ -151,7 +155,6 @@ if __name__ == '__main__':
 
         for ent in ents:
             ent.detections = np.zeros((len(model_infer), 5), dtype=None)
-        #     i.infer_len = len(np.where(model_infer==a)[1])
 
         if len(model_infer):
             for num, obj in enumerate(model_infer):
@@ -186,8 +189,8 @@ if __name__ == '__main__':
     source.release()
     cv2.destroyAllWindows()
 
-# stats
 
+    # stats
     for ent in ents:
         print(f'TOTAL {ent.name}: {len(ent.velocity_history)}')
         # print(ents[2].history)
