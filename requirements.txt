@@ -1,5 +1,12 @@
-scipy
-filterpy==1.4.1
-numba==0.38.1
-scikit-image==0.14.0
-scikit-learn==0.19.1
+asposestorage==1.0.2
+filterpy==1.4.5
+lap==0.4.0
+matplotlib==3.5.3
+mss==7.0.1
+numpy==1.21.5
+onnxruntime==1.14.1
+scipy==1.10.1
+skimage==0.0
+torch==1.13.1
+ultralytics==8.0.57
+utils==1.0.1

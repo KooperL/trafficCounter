@@ -1,4 +1,3 @@
-from mss import mss
 import cv2
 import numpy as np
 import sys
@@ -8,6 +7,8 @@ import tracker_traj
 import datetime
 import json
 from sort2 import *
+from mss import mss
+from ultralytics import YOLO
 
 '''
 To do: 
@@ -24,7 +25,7 @@ PATH = '/media/kooper/HDD/yolov5-master'
 SOURCE = {
     'source': False,    # bool
     'live': False,      # bool
-    'video': 'input/filename.mp4',
+    'video': 'Input/test.avi',
 }
 
 class entity:
@@ -107,7 +108,9 @@ class MSSSource:
 
 
 if __name__ == '__main__':
-    model_output = torch.hub.load(PATH, 'customWrapper', path=f'{PATH}/yolov5s.pt', source='local', force_reload=True)
+    # model_output = torch.hub.load(PATH, 'custom', path=f'{PATH}/yolov5s.pt', source='local', force_reload=True)
+    model_output = YOLO('/home/kooper/Downloads/yolov8m.pt')
+
     # fourcc = cv2.VideoWriter_fourcc(*'XVID')
     # out = cv2.VideoWriter('output.avi', fourcc, 20.0, (640,480))
     
@@ -140,7 +143,7 @@ if __name__ == '__main__':
     while (True):
         if SOURCE['source']:
             ret, img = source.frame()
-        elif SOURCE['LIVE']:
+        elif SOURCE['live']:
             ret, img = live.read()
         else:
             ret, img = video.read()
@@ -150,16 +153,18 @@ if __name__ == '__main__':
         img = cv2.resize(img, (WIDTH, HEIGHT))
 
         model_infer = model_output(img)
-        model_infer = model_infer.xyxy[0].cpu().numpy()
-        model_output.conf = 0.4
+        # model_infer = model_infer.xyxy[0].cpu().numpy()
+        # model_output.conf = 0.4
 
         for ent in ents:
             ent.detections = np.zeros((len(model_infer), 5), dtype=None)
 
         if len(model_infer):
             for num, obj in enumerate(model_infer):
-                x1, y1, x2, y2, conf, cat = obj
+                x1, y1, x2, y2 = obj.boxes.xyxy[0].cpu().numpy()
+                conf, cat = [obj.boxes.conf.cpu().numpy()[0], obj.boxes.cls.cpu().numpy()[0].astype(int)]
                 cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0,0,0), 1)
+                print(cat, conf)
                 if cat < 3:
                     ents[int(cat)].detections[num] = np.array([x1, y1, x2, y2, conf])
 
