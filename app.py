@@ -131,13 +131,13 @@ if __name__ == '__main__':
         int(video.get(cv2.CAP_PROP_FRAME_WIDTH)),
         int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
     )
+
     fps = int(video.get(cv2.CAP_PROP_FPS))
-
-    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-    out = cv2.VideoWriter()
-    output_file_name = f"output/output_{datetime.datetime.now()}.mp4"
-    out.open(output_file_name, fourcc, fps, (width, height), True)
-
+    # fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    output_file_name = f"Output/output_{datetime.datetime.now()}.avi"
+ 
+    out = cv2.VideoWriter(output_file_name, fourcc, fps, (width, height))
 
 
     while (True):
@@ -157,14 +157,13 @@ if __name__ == '__main__':
         # model_output.conf = 0.4
 
         for ent in ents:
-            ent.detections = np.zeros((len(model_infer), 5), dtype=None)
-
+            ent.detections = np.zeros((len(model_infer[0]), 5), dtype=None)
         if len(model_infer):
-            for num, obj in enumerate(model_infer):
-                x1, y1, x2, y2 = obj.boxes.xyxy[0].cpu().numpy()
-                conf, cat = [obj.boxes.conf.cpu().numpy()[0], obj.boxes.cls.cpu().numpy()[0].astype(int)]
+            for num, obj in enumerate(model_infer[0]):
+                x1, y1, x2, y2 = obj.boxes.xyxy.cpu().numpy()[0]
+                conf = obj.boxes.conf.cpu().numpy()[0]
+                cat = obj.boxes.cls.cpu().numpy().astype(int)[0]
                 cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0,0,0), 1)
-                print(cat, conf)
                 if cat < 3:
                     ents[int(cat)].detections[num] = np.array([x1, y1, x2, y2, conf])
 
@@ -187,6 +186,7 @@ if __name__ == '__main__':
                 out.write(img)
 
         cv2.imshow('test', img)
+        out.write(img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
@@ -213,7 +213,7 @@ if __name__ == '__main__':
                     ent.summary['stats']['max'] = None                        
             # else:
             #     del ent.history[t_id]
-        with open(f'data/{ent.name}.json', 'w') as fp:
+        with open(f'data/{ent.name}_output_{datetime.datetime.now()}.json', 'w') as fp:
             json.dump(ent.summary, fp)
 
 # Need to flatten the rate of change for the distance
